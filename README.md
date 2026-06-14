@@ -4,7 +4,7 @@ A Docker container that runs the [SimpleX Chat](https://simplex.chat/) terminal 
 
 SimpleX Chat is the first messenger with no user identifiers — not even random numbers. It's fully open source, end-to-end encrypted, and metadata-resistant by design.
 
-## What this package does
+## What it does
 
 - Boots `simplex-chat` in bot mode (`-p 5226 --create-bot-display-name "SimpleX Bot" --create-bot-allow-files`) so the binary auto-creates a fresh profile on first start.
 - Bridges the bot's internal TCP control port to a WebSocket via [`websocat`](https://github.com/vi/websocat), so any WebSocket client can drive the bot using the [SimpleX bot protocol](https://github.com/simplex-chat/simplex-chat/blob/stable/bots/README.md).
@@ -126,6 +126,24 @@ in send commands verbatim — no path translation. Do **not** mount the whole
 > the consumer container. The full design is in
 > [`simplex-chat-startos/docs/file-exchange-architecture.md`](https://github.com/lundog/simplex-chat-startos/blob/master/docs/file-exchange-architecture.md).
 
+## Configuration
+
+The container is configured through environment variables (all optional):
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `BOT_DISPLAY_NAME` | `SimpleX Bot` | Bot profile name. Applied **only on first boot**, when the profile is created; afterwards it lives on the persisted profile and is changed via the API. |
+| `SIMPLEX_DIR` | `/simplex` | Root of the file-exchange tree (the contract mountpoint). `inbound`/`tmp`/`outbound` are derived as subdirectories. |
+| `SIMPLEX_INBOUND_DIR` | `$SIMPLEX_DIR/inbound` | Override the received-files dir individually. |
+| `SIMPLEX_TMP_DIR` | `$SIMPLEX_DIR/tmp` | Override the in-progress-transfers dir individually. |
+| `SIMPLEX_OUTBOUND_DIR` | `$SIMPLEX_DIR/outbound` | Override the outbound dir individually. |
+
+`BOT_DISPLAY_NAME` is the common one and is wired into `docker-compose.yml` and
+the Makefile `run` target. The `SIMPLEX_*` paths are advanced knobs — if you
+change them, keep `inbound` and `tmp` on the **same filesystem** (simplex-chat
+finishes a download with an atomic `tmp` → `inbound` rename that fails across
+mounts), and update the `/simplex` volume mountpoint to match.
+
 ## Build and run
 
 Prerequisites: Docker (with the `buildx` plugin for multi-arch builds).
@@ -136,14 +154,19 @@ Prerequisites: Docker (with the `buildx` plugin for multi-arch builds).
 docker build -t simplex-chat .
 ```
 
-To bump the pinned upstream versions, override the build args (and refresh the
-matching SHA-256 args in the `Dockerfile`):
+To bump the pinned `simplex-chat` or `websocat` version, edit the `Dockerfile`:
+each version and its per-architecture SHA-256 are a matched set, so change them
+together (refresh the hashes from the upstream release pages linked in the
+`Dockerfile` comments) and commit. They're deliberately not build-arg overrides,
+so a version can never drift from its checksum.
+
+For a container-only re-release where the upstream versions are unchanged (e.g.
+a fix to `entrypoint.sh`), set the optional hotfix suffix instead — it only
+affects the image version label:
 
 ```sh
-docker build \
-  --build-arg SIMPLEX_VERSION=v6.5.4 \
-  --build-arg WEBSOCAT_VERSION=v1.14.1 \
-  -t simplex-chat .
+docker build --build-arg IMAGE_REVISION=-1 -t simplex-chat .
+# image version label becomes <simplex-version>-1
 ```
 
 ### Run the container
@@ -165,7 +188,8 @@ rename. The WebSocket control interface is then reachable at `ws://localhost:522
 
 ### Using docker-compose
 
-Copy `.env.example` to `.env`, adjust `DATA_DIR` / `WS_PORT` if needed, then:
+Copy `.env.example` to `.env`, adjust `DATA_DIR` / `WS_PORT` / `BOT_DISPLAY_NAME`
+if needed, then:
 
 ```sh
 docker compose up -d --build    # build locally and run
@@ -205,6 +229,10 @@ access token with read/write scope).
 git tag v6.5.4
 git push origin v6.5.4
 ```
+
+A pre-release tag like `v6.5.4-1` (e.g. a container-only hotfix) publishes only
+the `6.5.4-1` image tag — `latest` and `6.5` stay pointed at the last real
+release.
 
 To publish by hand instead:
 

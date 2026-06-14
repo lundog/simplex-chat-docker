@@ -1,4 +1,14 @@
+# Only entrypoint.sh is COPYed into the image; keep the build context minimal
+# and never ship a local secrets file.
 .git
 .gitmodules
 .DS_Store
 .vscode/
+.env
+.github/
+README.md
+docs/
+Makefile
+docker-compose.yml
+.env.example
+LICENSE
