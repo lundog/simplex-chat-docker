@@ -28,8 +28,8 @@ External WebSocket client
                                                         simplex-chat (-p 5226)
                                                                 │
                                                                 └─ /data (volume)
-                                                                   └─ .simplex/   (profile)
-                                                                   └─ simplex/    (file exchange)
+                                                                   └─ .simplex/        (profile DB + keys)
+                                                                       └─ media/       (file exchange, mounted at /simplex)
 ```
 ## Connecting programmatically
 
@@ -102,20 +102,24 @@ The bot's profile, configuration, and chat history all live in the `/data` volum
 
 Other services can exchange files with the bot by mounting subpaths of
 this container's `/data` volume. The container publishes a well-known layout:
-the volume's `simplex` subpath is mounted at `/simplex` in the bot's container
-(a single mount — simplex-chat renames completed downloads from `tmp` to `inbound`,
-which requires both to be on one filesystem), containing:
+the volume's `.simplex/media` subpath is mounted at `/simplex` in the bot's
+container (a single mount — simplex-chat renames completed downloads from `tmp`
+to `inbound`, which requires both to be on one filesystem), containing:
 
 | Volume subpath | Container path | Access for consumers | Purpose |
 |---|---|---|---|
-| `simplex/inbound` | `/simplex/inbound` | read-only | Files received by the bot (`--files-folder`) |
-| `simplex/tmp` | `/simplex/tmp` | read-only (optional) | In-progress transfers (`--temp-folder`) |
-| `simplex/outbound` | `/simplex/outbound` | read-write | Consumer-written files for the bot to send |
+| `.simplex/media/inbound` | `/simplex/inbound` | read-only | Files received by the bot (`--files-folder`) |
+| `.simplex/media/tmp` | `/simplex/tmp` | read-only (optional) | In-progress transfers (`--temp-folder`) |
+| `.simplex/media/outbound` | `/simplex/outbound` | read-write | Consumer-written files for the bot to send |
+
+The file-exchange tree lives under `.simplex/media`, alongside the bot's
+profile DB in `.simplex/` (rather than as a separate top-level dir). Consumers
+still mount only the `media/*` subpaths below — never `.simplex/` itself.
 
 A consumer that mounts these subpaths at the *same mountpoints* can use file
 paths from WebSocket messages verbatim, and pass `/simplex/outbound/...` paths
 in send commands verbatim — no path translation. Do **not** mount the whole
-`/data` volume; it contains the bot's profile database and keys.
+`/data` volume (or `.simplex/`); it contains the bot's profile database and keys.
 
 > On StartOS the consumer (e.g. OpenClaw) mounts these subpaths via
 > `mountDependency`; with plain Docker, mount the same host subdirectories into
@@ -148,16 +152,16 @@ docker build \
 docker run -d --name simplex-chat \
   -p 5225:5225/tcp \
   -v /Users/lundog/simplex-volume:/data \
-  -v /Users/lundog/simplex-volume/simplex:/simplex \
+  -v /Users/lundog/simplex-volume/.simplex/media:/simplex \
   --restart unless-stopped \
   simplex-chat
 ```
 
-`/data` holds the bot's profile and chat history; `/simplex` is the
-file-exchange tree (see below). Both are bind-mounted from the *same* host
-directory so they share one filesystem — required for simplex-chat's atomic
-`tmp` → `inbound` rename. The WebSocket control interface is then reachable at
-`ws://localhost:5225`.
+`/data` holds the bot's profile and chat history (in `.simplex/`); `/simplex`
+is the file-exchange tree (see below), which lives at `.simplex/media` inside
+the same `/data` volume. Both mounts therefore point into one host directory
+and share one filesystem — required for simplex-chat's atomic `tmp` → `inbound`
+rename. The WebSocket control interface is then reachable at `ws://localhost:5225`.
 
 ### Using docker-compose
 

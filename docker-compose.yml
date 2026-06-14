@@ -29,7 +29,9 @@ services:
       BOT_DISPLAY_NAME: "${BOT_DISPLAY_NAME:-SimpleX Bot}"
     volumes:
       - "${DATA_DIR:-./data}:/data"
-      - "${DATA_DIR:-./data}/simplex:/simplex"
+      # File-exchange tree lives under the bot's profile dir (.simplex/media),
+      # mounted at the contract path /simplex. Same host fs as /data.
+      - "${DATA_DIR:-./data}/.simplex/media:/simplex"
     # SIMPLEX_DIR is intentionally not exposed here: the /simplex mount above
     # hardcodes the contract mountpoint, so overriding the path is an advanced
     # manual knob (see README), not a compose toggle.

@@ -33,7 +33,7 @@ run: ## Run the container detached (bind-mounts DATA_DIR)
 	  -p $(WS_PORT):5225/tcp \
 	  -e BOT_DISPLAY_NAME="$(BOT_DISPLAY_NAME)" \
 	  -v $(DATA_DIR):/data \
-	  -v $(DATA_DIR)/simplex:/simplex \
+	  -v $(DATA_DIR)/.simplex/media:/simplex \
 	  --restart unless-stopped \
 	  $(IMAGE):$(TAG)
 
