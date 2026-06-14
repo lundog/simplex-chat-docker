@@ -8,12 +8,15 @@ TAG              ?= latest
 PLATFORMS        ?= linux/amd64,linux/arm64
 DATA_DIR         ?= $(HOME)/simplex-volume
 WS_PORT          ?= 5225
+BOT_DISPLAY_NAME ?= SimpleX Bot
 
-# Pinned upstream versions (must match the SHA-256 args in the Dockerfile).
-SIMPLEX_VERSION  ?= v6.5.4
-WEBSOCAT_VERSION ?= v1.14.1
-BUILD_ARGS        = --build-arg SIMPLEX_VERSION=$(SIMPLEX_VERSION) \
-                    --build-arg WEBSOCAT_VERSION=$(WEBSOCAT_VERSION)
+# simplex-chat / websocat versions and their SHA-256 pins are a matched set,
+# bumped together in the Dockerfile — not overridable here.
+#
+# IMAGE_REVISION is an optional container-only hotfix suffix for the image
+# version label (e.g. make build IMAGE_REVISION=-1). Empty by default.
+IMAGE_REVISION   ?=
+BUILD_ARGS        = $(if $(IMAGE_REVISION),--build-arg IMAGE_REVISION=$(IMAGE_REVISION),)
 
 .DEFAULT_GOAL := help
 .PHONY: help build run stop logs clean login push buildx
@@ -28,6 +31,7 @@ build: ## Build the image for the local architecture
 run: ## Run the container detached (bind-mounts DATA_DIR)
 	docker run -d --name simplex-chat \
 	  -p $(WS_PORT):5225/tcp \
+	  -e BOT_DISPLAY_NAME="$(BOT_DISPLAY_NAME)" \
 	  -v $(DATA_DIR):/data \
 	  -v $(DATA_DIR)/simplex:/simplex \
 	  --restart unless-stopped \

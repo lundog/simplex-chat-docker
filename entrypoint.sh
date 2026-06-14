@@ -34,20 +34,40 @@ cleanup() {
 }
 trap cleanup TERM INT EXIT
 
-# File exchange contract paths:
-# received files and in-progress transfers land under /simplex/* so that
-# consumer packages mounting the same volume subpaths at the same
-# mountpoints can use these paths verbatim. /simplex is a single mount;
-# inbound and tmp must be plain subdirectories of it so simplex-chat's
-# tmp→inbound rename stays on one filesystem.
-mkdir -p /simplex/inbound /simplex/tmp /simplex/outbound
+# --- configuration (env-overridable) ---
+#
+# BOT_DISPLAY_NAME only takes effect on the very first start, when no profile
+# exists yet. After that the name lives on the persisted profile and is edited
+# through the API.
+BOT_DISPLAY_NAME="${BOT_DISPLAY_NAME:-SimpleX Bot}"
 
+# File exchange contract paths.
+#
+# SIMPLEX_DIR is the published contract root (a mounted volume). Received files
+# and in-progress transfers land in its subdirectories so that consumers
+# sharing the same host directory can locate them. inbound and tmp MUST stay on
+# the same filesystem: simplex-chat finishes a download with an atomic
+# rename(2) from tmp into inbound, which fails with EXDEV across mounts. Keeping
+# them as siblings under SIMPLEX_DIR (a single mount) guarantees this — so if
+# you override them individually, keep inbound and tmp co-located.
+SIMPLEX_DIR="${SIMPLEX_DIR:-/simplex}"
+SIMPLEX_INBOUND_DIR="${SIMPLEX_INBOUND_DIR:-$SIMPLEX_DIR/inbound}"
+SIMPLEX_TMP_DIR="${SIMPLEX_TMP_DIR:-$SIMPLEX_DIR/tmp}"
+SIMPLEX_OUTBOUND_DIR="${SIMPLEX_OUTBOUND_DIR:-$SIMPLEX_DIR/outbound}"
+
+echo "simplex-chat container starting"
+echo "  inbound:  $SIMPLEX_INBOUND_DIR"
+echo "  tmp:      $SIMPLEX_TMP_DIR"
+echo "  outbound: $SIMPLEX_OUTBOUND_DIR"
+mkdir -p "$SIMPLEX_INBOUND_DIR" "$SIMPLEX_TMP_DIR" "$SIMPLEX_OUTBOUND_DIR"
+
+echo "starting simplex-chat on 127.0.0.1:5226 (display name: \"$BOT_DISPLAY_NAME\")..."
 /usr/local/bin/simplex-chat \
   -p 5226 \
-  --create-bot-display-name "SimpleX Bot" \
+  --create-bot-display-name "$BOT_DISPLAY_NAME" \
   --create-bot-allow-files \
-  --files-folder /simplex/inbound \
-  --temp-folder /simplex/tmp \
+  --files-folder "$SIMPLEX_INBOUND_DIR" \
+  --temp-folder "$SIMPLEX_TMP_DIR" \
   --yes-migrate \
   &
 SIMPLEX_PID=$!
@@ -70,8 +90,10 @@ fi
 # WebSocket bridge: external clients connect here. websocat translates
 # each incoming connection on :5225 into an outgoing WebSocket to the
 # bot's TCP control port.
+echo "simplex-chat is listening; starting websocat bridge 0.0.0.0:5225 -> ws://127.0.0.1:5226"
 /usr/local/bin/websocat -t ws-listen:0.0.0.0:5225 ws://127.0.0.1:5226 &
 WEBSOCAT_PID=$!
+echo "simplex-chat container ready"
 
 # Block until either child exits, then propagate. Requires bash 4.3+.
 # Capture the exit code via `||` so `set -e` doesn't short-circuit our

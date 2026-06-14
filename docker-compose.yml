@@ -17,21 +17,27 @@ services:
   simplex-chat:
     image: ${IMAGE:-lundog/simplex-chat:latest}
     build:
+      # Versions and their SHA-256 pins are a matched set, bumped together in
+      # the Dockerfile — not overridable here.
       context: .
-      args:
-        SIMPLEX_VERSION: ${SIMPLEX_VERSION:-v6.5.4}
-        WEBSOCAT_VERSION: ${WEBSOCAT_VERSION:-v1.14.1}
     container_name: simplex-chat
     restart: unless-stopped
     ports:
       - "${WS_PORT:-5225}:5225/tcp"
+    environment:
+      # Applied only on first boot, when the bot profile is created.
+      BOT_DISPLAY_NAME: "${BOT_DISPLAY_NAME:-SimpleX Bot}"
     volumes:
       - "${DATA_DIR:-./data}:/data"
       - "${DATA_DIR:-./data}/simplex:/simplex"
+    # SIMPLEX_DIR is intentionally not exposed here: the /simplex mount above
+    # hardcodes the contract mountpoint, so overriding the path is an advanced
+    # manual knob (see README), not a compose toggle.
     healthcheck:
       # bash builtin /dev/tcp — no extra tooling needed in the image.
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/5225"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 60s
+      # Headroom over the entrypoint's 60s readiness wait on first boot.
+      start_period: 90s
