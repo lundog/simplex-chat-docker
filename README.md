@@ -174,8 +174,8 @@ docker build --build-arg IMAGE_REVISION=-1 -t simplex-chat .
 ```sh
 docker run -d --name simplex-chat \
   -p 5225:5225/tcp \
-  -v /Users/lundog/simplex-volume:/data \
-  -v /Users/lundog/simplex-volume/.simplex/media:/simplex \
+  -v /path/to/simplex-volume:/data \
+  -v /path/to/simplex-volume/.simplex/media:/simplex \
   --restart unless-stopped \
   simplex-chat
 ```
