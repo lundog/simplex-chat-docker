@@ -1,0 +1,37 @@
+# docker-compose for local development / self-hosting.
+#
+# Copy .env.example to .env to override IMAGE, DATA_DIR, WS_PORT, or the
+# pinned build-arg versions. With no .env, the defaults below are used.
+#
+#   docker compose up -d --build      # build locally and run
+#   docker compose up -d              # pull the published image and run
+#   docker compose logs -f            # follow logs
+#   docker compose down               # stop and remove
+#
+# DATA_DIR holds the bot's profile and the file-exchange dirs. /data and
+# /simplex (the volume's `simplex` subpath) are bind-mounted from the same
+# host directory so they share one filesystem — required for simplex-chat's
+# atomic tmp->inbound rename. See README "File exchange contract".
+
+services:
+  simplex-chat:
+    image: ${IMAGE:-lundog/simplex-chat:latest}
+    build:
+      context: .
+      args:
+        SIMPLEX_VERSION: ${SIMPLEX_VERSION:-v6.5.4}
+        WEBSOCAT_VERSION: ${WEBSOCAT_VERSION:-v1.14.1}
+    container_name: simplex-chat
+    restart: unless-stopped
+    ports:
+      - "${WS_PORT:-5225}:5225/tcp"
+    volumes:
+      - "${DATA_DIR:-./data}:/data"
+      - "${DATA_DIR:-./data}/simplex:/simplex"
+    healthcheck:
+      # bash builtin /dev/tcp — no extra tooling needed in the image.
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/5225"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s

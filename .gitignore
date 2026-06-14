@@ -1,0 +1,8 @@
+.DS_Store
+.vscode/
+
+# Local environment overrides (copy from .env.example)
+.env
+
+# Local bind-mount data created by docker-compose (DATA_DIR default)
+/data/
