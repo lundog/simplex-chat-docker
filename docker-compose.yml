@@ -25,8 +25,13 @@ services:
     ports:
       - "${WS_PORT:-5225}:5225/tcp"
     environment:
-      # Applied only on first boot, when the bot profile is created.
+      # Applied only on first boot, when the profile is created.
       BOT_DISPLAY_NAME: "${BOT_DISPLAY_NAME:-SimpleX Bot}"
+      # true = SimpleX bot profile; false = plain SimpleX user (first boot only).
+      BOT_MODE: "${BOT_MODE:-true}"
+      # Custom relays (space-separated). Empty = simplex-chat's public presets.
+      SMP_SERVERS: "${SMP_SERVERS:-}"
+      XFTP_SERVERS: "${XFTP_SERVERS:-}"
     volumes:
       - "${DATA_DIR:-./data}:/data"
       # File-exchange tree lives under the bot's profile dir (.simplex/media),

@@ -9,6 +9,7 @@ PLATFORMS        ?= linux/amd64,linux/arm64
 DATA_DIR         ?= $(HOME)/simplex-volume
 WS_PORT          ?= 5225
 BOT_DISPLAY_NAME ?= SimpleX Bot
+BOT_MODE         ?= true
 
 # simplex-chat / websocat versions and their SHA-256 pins are a matched set,
 # bumped together in the Dockerfile — not overridable here.
@@ -32,6 +33,7 @@ run: ## Run the container detached (bind-mounts DATA_DIR)
 	docker run -d --name simplex-chat \
 	  -p $(WS_PORT):5225/tcp \
 	  -e BOT_DISPLAY_NAME="$(BOT_DISPLAY_NAME)" \
+	  -e BOT_MODE="$(BOT_MODE)" \
 	  -v $(DATA_DIR):/data \
 	  -v $(DATA_DIR)/.simplex/media:/simplex \
 	  --restart unless-stopped \

@@ -5,8 +5,9 @@ set -e
 #
 # We run two long-lived processes inside this container:
 #
-#   1. simplex-chat — the SimpleX terminal client in bot mode, listening for
-#      WebSocket connections on 127.0.0.1:5226 (container-local).
+#   1. simplex-chat — the SimpleX terminal client in headless server mode
+#      (bot or plain profile), listening for WebSocket connections on
+#      127.0.0.1:5226 (container-local).
 #   2. websocat — translates external WebSocket connections on
 #      0.0.0.0:5225 into local connections to simplex-chat.
 #
@@ -36,10 +37,23 @@ trap cleanup TERM INT EXIT
 
 # --- configuration (env-overridable) ---
 #
-# BOT_DISPLAY_NAME only takes effect on the very first start, when no profile
-# exists yet. After that the name lives on the persisted profile and is edited
-# through the API.
+# BOT_DISPLAY_NAME is the gateway's SimpleX profile display name. It only takes
+# effect on the very first start, when the profile is created; afterwards it
+# lives on the persisted profile and is edited through the API.
 BOT_DISPLAY_NAME="${BOT_DISPLAY_NAME:-SimpleX Bot}"
+
+# BOT_MODE=true (default) creates the profile as a SimpleX *bot* (peerType
+# "bot") via --create-bot-*, so peers' apps highlight commands and show command
+# menus. Set BOT_MODE=false to create a plain SimpleX user instead (pure
+# transport, send-only notifications, a scripted node). The bot marker is
+# cosmetic; file sharing is allowed either way.
+#
+# simplex-chat has no CLI flag to create a non-bot profile headlessly, and in
+# server mode it blocks on an interactive "display name" prompt until stdin
+# answers it. So plain mode feeds the display name (then an empty line for the
+# optional full name) over stdin. This only matters on first start — once a
+# profile exists the prompt never appears and the piped input is ignored.
+BOT_MODE="${BOT_MODE:-true}"
 
 # File exchange contract paths.
 #
@@ -55,22 +69,50 @@ SIMPLEX_INBOUND_DIR="${SIMPLEX_INBOUND_DIR:-$SIMPLEX_DIR/inbound}"
 SIMPLEX_TMP_DIR="${SIMPLEX_TMP_DIR:-$SIMPLEX_DIR/tmp}"
 SIMPLEX_OUTBOUND_DIR="${SIMPLEX_OUTBOUND_DIR:-$SIMPLEX_DIR/outbound}"
 
+# Custom message relays. When set, the bot routes through these servers instead
+# of simplex-chat's built-in public presets. Each variable is a SPACE-separated
+# list of full server addresses (the CLI splits the value on spaces), e.g.
+#   SMP_SERVERS="smp://<fingerprint>@host1 smp://<fingerprint>@host2"
+#   XFTP_SERVERS="xftp://<fingerprint>@host1"
+# Passed as a single --server / --xftp-server argument. Unset = use presets.
+SMP_SERVERS="${SMP_SERVERS:-}"
+XFTP_SERVERS="${XFTP_SERVERS:-}"
+
 echo "simplex-chat container starting"
 echo "  inbound:  $SIMPLEX_INBOUND_DIR"
 echo "  tmp:      $SIMPLEX_TMP_DIR"
 echo "  outbound: $SIMPLEX_OUTBOUND_DIR"
+[ -n "$SMP_SERVERS" ]  && echo "  smp:      $SMP_SERVERS"
+[ -n "$XFTP_SERVERS" ] && echo "  xftp:     $XFTP_SERVERS"
 mkdir -p "$SIMPLEX_INBOUND_DIR" "$SIMPLEX_TMP_DIR" "$SIMPLEX_OUTBOUND_DIR"
 
-echo "starting simplex-chat on 127.0.0.1:5226 (display name: \"$BOT_DISPLAY_NAME\")..."
-/usr/local/bin/simplex-chat \
-  -p 5226 \
-  --create-bot-display-name "$BOT_DISPLAY_NAME" \
-  --create-bot-allow-files \
-  --files-folder "$SIMPLEX_INBOUND_DIR" \
-  --temp-folder "$SIMPLEX_TMP_DIR" \
-  --yes-migrate \
-  &
-SIMPLEX_PID=$!
+# Build the argument list. Relay flags are added only when configured (an unset
+# value falls through to simplex-chat's presets); bot-creation flags only in
+# bot mode.
+simplex_args=(
+  -p 5226
+  --files-folder "$SIMPLEX_INBOUND_DIR"
+  --temp-folder "$SIMPLEX_TMP_DIR"
+  --yes-migrate
+)
+[ -n "$SMP_SERVERS" ]  && simplex_args+=(--server "$SMP_SERVERS")
+[ -n "$XFTP_SERVERS" ] && simplex_args+=(--xftp-server "$XFTP_SERVERS")
+
+if [ "$BOT_MODE" = "false" ]; then
+  # Plain (non-bot) profile: no headless create flag exists and server mode
+  # blocks on the first-start "display name" prompt, so answer it (plus the
+  # optional blank full name) over stdin. Process substitution keeps
+  # simplex-chat the backgrounded job, so $! is its PID for the supervisor.
+  # Has no effect after first start (the prompt no longer appears).
+  echo "starting simplex-chat (plain profile \"$BOT_DISPLAY_NAME\") on 127.0.0.1:5226..."
+  /usr/local/bin/simplex-chat "${simplex_args[@]}" < <(printf '%s\n\n' "$BOT_DISPLAY_NAME") &
+  SIMPLEX_PID=$!
+else
+  simplex_args+=(--create-bot-display-name "$BOT_DISPLAY_NAME" --create-bot-allow-files)
+  echo "starting simplex-chat (bot profile \"$BOT_DISPLAY_NAME\") on 127.0.0.1:5226..."
+  /usr/local/bin/simplex-chat "${simplex_args[@]}" &
+  SIMPLEX_PID=$!
+fi
 
 # Wait for simplex-chat to actually be listening on its TCP control port
 # before we start the bridge. /dev/tcp is a bash builtin — it opens a TCP

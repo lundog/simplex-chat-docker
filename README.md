@@ -132,17 +132,32 @@ The container is configured through environment variables (all optional):
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `BOT_DISPLAY_NAME` | `SimpleX Bot` | Bot profile name. Applied **only on first boot**, when the profile is created; afterwards it lives on the persisted profile and is changed via the API. |
+| `BOT_DISPLAY_NAME` | `SimpleX Bot` | Profile display name. Applied **only on first boot**, when the profile is created; afterwards it lives on the persisted profile and is changed via the API. |
+| `BOT_MODE` | `true` | `true` creates the profile as a SimpleX *bot* (`peerType: "bot"`) so peers' apps highlight commands and show command menus. `false` creates a plain SimpleX user (pure transport / send-only / scripted node). The marker is cosmetic; file sharing works either way. Applies **only on first boot**. |
+| `SMP_SERVERS` | *(presets)* | Space-separated list of SMP relay addresses (`smp://<fingerprint>@host`) to use instead of simplex-chat's public presets. Unset = presets. |
+| `XFTP_SERVERS` | *(presets)* | Space-separated list of XFTP relay addresses for file transfer. Unset = presets. |
 | `SIMPLEX_DIR` | `/simplex` | Root of the file-exchange tree (the contract mountpoint). `inbound`/`tmp`/`outbound` are derived as subdirectories. |
 | `SIMPLEX_INBOUND_DIR` | `$SIMPLEX_DIR/inbound` | Override the received-files dir individually. |
 | `SIMPLEX_TMP_DIR` | `$SIMPLEX_DIR/tmp` | Override the in-progress-transfers dir individually. |
 | `SIMPLEX_OUTBOUND_DIR` | `$SIMPLEX_DIR/outbound` | Override the outbound dir individually. |
 
-`BOT_DISPLAY_NAME` is the common one and is wired into `docker-compose.yml` and
-the Makefile `run` target. The `SIMPLEX_*` paths are advanced knobs — if you
-change them, keep `inbound` and `tmp` on the **same filesystem** (simplex-chat
-finishes a download with an atomic `tmp` → `inbound` rename that fails across
-mounts), and update the `/simplex` volume mountpoint to match.
+`BOT_DISPLAY_NAME` and `BOT_MODE` are wired into `docker-compose.yml` and the
+Makefile `run` target.
+
+`SMP_SERVERS` / `XFTP_SERVERS` accept multiple space-separated addresses, e.g.
+`SMP_SERVERS="smp://abc=@relay1.example smp://def=@relay2.example"`; they're
+passed to simplex-chat as a single `--server` / `--xftp-server` argument.
+
+The `SIMPLEX_*` paths are advanced knobs — if you change them, keep `inbound`
+and `tmp` on the **same filesystem** (simplex-chat finishes a download with an
+atomic `tmp` → `inbound` rename that fails across mounts), and update the
+`/simplex` volume mountpoint to match.
+
+> **Plain mode note:** there's no CLI flag to create a non-bot profile
+> headlessly, so on first boot plain mode answers simplex-chat's interactive
+> display-name prompt over stdin. This is verified to work on `simplex-chat
+> v6.5.4`; if a future version changes the first-run prompt, plain-mode profile
+> creation may need revisiting.
 
 ## Build and run
 
