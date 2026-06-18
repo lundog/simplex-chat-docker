@@ -78,12 +78,18 @@ SIMPLEX_OUTBOUND_DIR="${SIMPLEX_OUTBOUND_DIR:-$SIMPLEX_DIR/outbound}"
 SMP_SERVERS="${SMP_SERVERS:-}"
 XFTP_SERVERS="${XFTP_SERVERS:-}"
 
+# A relay address can carry a server basic-auth password
+# (smp://<fingerprint>:<password>@host). Redact that password before logging so
+# it never lands in container logs, while keeping the scheme, fingerprint, host,
+# and port visible for diagnostics. Addresses without a password are unchanged.
+mask_server_pw() { sed -E 's#(://[^:@/]+):[^@]*@#\1:***@#g'; }
+
 echo "simplex-chat container starting"
 echo "  inbound:  $SIMPLEX_INBOUND_DIR"
 echo "  tmp:      $SIMPLEX_TMP_DIR"
 echo "  outbound: $SIMPLEX_OUTBOUND_DIR"
-[ -n "$SMP_SERVERS" ]  && echo "  smp:      $SMP_SERVERS"
-[ -n "$XFTP_SERVERS" ] && echo "  xftp:     $XFTP_SERVERS"
+[ -n "$SMP_SERVERS" ]  && echo "  smp:      $(printf '%s' "$SMP_SERVERS"  | mask_server_pw)"
+[ -n "$XFTP_SERVERS" ] && echo "  xftp:     $(printf '%s' "$XFTP_SERVERS" | mask_server_pw)"
 mkdir -p "$SIMPLEX_INBOUND_DIR" "$SIMPLEX_TMP_DIR" "$SIMPLEX_OUTBOUND_DIR"
 
 # Build the argument list. Relay flags are added only when configured (an unset
