@@ -27,9 +27,11 @@ External WebSocket client
                                                                 │
                                                         simplex-chat (-p 5226)
                                                                 │
-                                                                └─ /data (volume)
-                                                                   └─ .simplex/        (profile DB + keys)
-                                                                       └─ media/       (file exchange, mounted at /simplex)
+                                                                └─ /data (volume, HOME)
+                                                                   └─ .simplex/   (profile DB + keys)
+                                                                       ├─ files/    (inbound, --files-folder)
+                                                                       ├─ tmp/      (--temp-folder)
+                                                                       └─ outbound/ (consumer-written, to send)
 ```
 ## Connecting programmatically
 
@@ -98,33 +100,57 @@ A response for the first command will look like this:
 
 The bot's profile, configuration, and chat history all live in the `/data` volume.
 
-## File exchange contract
+## File exchange
 
-Other services can exchange files with the bot by mounting subpaths of
-this container's `/data` volume. The container publishes a well-known layout:
-the volume's `.simplex/media` subpath is mounted at `/simplex` in the bot's
-container (a single mount — simplex-chat renames completed downloads from `tmp`
-to `inbound`, which requires both to be on one filesystem), containing:
+Received files live under the bot's profile dir on the `/data` volume, as
+siblings of the profile DB:
 
-| Volume subpath | Container path | Access for consumers | Purpose |
-|---|---|---|---|
-| `.simplex/media/inbound` | `/simplex/inbound` | read-only | Files received by the bot (`--files-folder`) |
-| `.simplex/media/tmp` | `/simplex/tmp` | read-only (optional) | In-progress transfers (`--temp-folder`) |
-| `.simplex/media/outbound` | `/simplex/outbound` | read-write | Consumer-written files for the bot to send |
+| Volume subpath | Purpose | simplex-chat flag |
+|---|---|---|
+| `.simplex/files` | Files received by the bot (inbound) | `--files-folder` |
+| `.simplex/tmp` | In-progress transfers | `--temp-folder` |
 
-The file-exchange tree lives under `.simplex/media`, alongside the bot's
-profile DB in `.simplex/` (rather than as a separate top-level dir). Consumers
-still mount only the `media/*` subpaths below — never `.simplex/` itself.
+`files` and `tmp` stay co-located under `.simplex/` on one filesystem — required
+because simplex-chat finishes a download with an atomic `tmp` → `files` rename
+that fails across mounts.
 
-A consumer that mounts these subpaths at the *same mountpoints* can use file
-paths from WebSocket messages verbatim, and pass `/simplex/outbound/...` paths
-in send commands verbatim — no path translation. Do **not** mount the whole
-`/data` volume (or `.simplex/`); it contains the bot's profile database and keys.
+A consumer (another service, or the openclaw-simplex plugin) exchanges files
+with the bot. The two directions work differently:
 
-> On StartOS the consumer (e.g. OpenClaw) mounts these subpaths via
-> `mountDependency`; with plain Docker, mount the same host subdirectories into
-> the consumer container. The full design is in
-> [`simplex-chat-startos/docs/file-exchange-architecture.md`](https://github.com/lundog/simplex-chat-startos/blob/master/docs/file-exchange-architecture.md).
+- **Receiving files (inbound)** — the WebSocket reports a received file by
+  *name only*, which the consumer resolves against its own view of the
+  `.simplex/files` dir. So the two sides only need to share that one host
+  directory; the mountpoint can differ on each side (no matching path required).
+- **Sending files (outbound)** — there is **no outbound dir setting and no
+  `--outbound-folder` flag**; sending is not a simplex-chat option at all. To
+  send a file you issue a command whose path is resolved **inside this
+  container**, so the file must already be on disk at a path this container can
+  read, and you pass *that* path. The bot won't fetch bytes over the WebSocket.
+
+Because the sender's path and the container's path must be the **same string**,
+bind-mount a directory onto the identical path on both sides. Use any path you
+can create without hoops — e.g. `/tmp/simplex-outbound` (avoid root-only paths
+like `/simplex`, which need `sudo` on macOS):
+
+```sh
+mkdir -p /tmp/simplex-outbound
+docker run -d --name simplex-chat \
+  -p 5225:5225/tcp \
+  -v /path/to/simplex-volume:/data \
+  -v /tmp/simplex-outbound:/tmp/simplex-outbound \   # same path both sides — needed to SEND files
+  simplex-chat
+# sender writes /tmp/simplex-outbound/pic.jpg, then sends fileSource.filePath=/tmp/simplex-outbound/pic.jpg
+```
+
+The container starts fine without this mount — you just can't *send* files until
+it's present. (The openclaw-simplex plugin automates the sender side via
+`connection.outboundFolder`, which stages outgoing files into this dir and
+passes the verbatim path.)
+
+**Security:** a consumer shares only what it needs — the `.simplex/files`
+subpath for inbound and a dedicated outbound dir for sending — never `.simplex/`
+itself or the whole `/data` volume, which hold the profile database and keys. On
+StartOS the consumer (e.g. OpenClaw) mounts subpaths via `mountDependency`.
 
 ## Configuration
 
@@ -132,31 +158,34 @@ The container is configured through environment variables (all optional):
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `BOT_DISPLAY_NAME` | `SimpleX Bot` | Profile display name. Applied **only on first boot**, when the profile is created; afterwards it lives on the persisted profile and is changed via the API. |
-| `BOT_MODE` | `true` | `true` creates the profile as a SimpleX *bot* (`peerType: "bot"`) so peers' apps highlight commands and show command menus. `false` creates a plain SimpleX user (pure transport / send-only / scripted node). The marker is cosmetic; file sharing works either way. Applies **only on first boot**. |
+| `PROFILE_DISPLAY_NAME` | `SimpleX Bot` | Profile display name. Applied **only on first boot**, when the profile is created; afterwards it lives on the persisted profile and is changed via the API. |
+| `PROFILE_PEER_TYPE` | `bot` | `bot` creates the profile as a SimpleX *bot* (`peerType: "bot"`) so peers' apps highlight commands and show command menus. `human` creates a plain SimpleX user (pure transport / scripted node). The marker is cosmetic; file sharing works either way. Applies **only on first boot**. |
 | `SMP_SERVERS` | *(presets)* | Space-separated list of SMP relay addresses (`smp://<fingerprint>@host`) to use instead of simplex-chat's public presets. Unset = presets. |
 | `XFTP_SERVERS` | *(presets)* | Space-separated list of XFTP relay addresses for file transfer. Unset = presets. |
-| `SIMPLEX_DIR` | `/simplex` | Root of the file-exchange tree (the contract mountpoint). `inbound`/`tmp`/`outbound` are derived as subdirectories. |
-| `SIMPLEX_INBOUND_DIR` | `$SIMPLEX_DIR/inbound` | Override the received-files dir individually. |
-| `SIMPLEX_TMP_DIR` | `$SIMPLEX_DIR/tmp` | Override the in-progress-transfers dir individually. |
-| `SIMPLEX_OUTBOUND_DIR` | `$SIMPLEX_DIR/outbound` | Override the outbound dir individually. |
+| `SIMPLEX_INBOUND_DIR` | `$HOME/.simplex/files` | Received-files dir (`--files-folder`). |
+| `SIMPLEX_TMP_DIR` | `$HOME/.simplex/tmp` | In-progress-transfers dir (`--temp-folder`). |
+| `WS_MAX_MESSAGE_BYTES` | `16777216` (16 MiB) | Max WebSocket message size for the `websocat` bridge (`-B`). Above `websocat`'s 64 KiB default so large SimpleX events/previews aren't split into partial frames (which corrupts the JSON the client parses). |
 
-`BOT_DISPLAY_NAME` and `BOT_MODE` are wired into `docker-compose.yml` and the
-Makefile `run` target.
+(There is no outbound dir variable — sending a file is not a simplex-chat setting; see [File exchange](#file-exchange).)
+
+`PROFILE_DISPLAY_NAME` and `PROFILE_PEER_TYPE` are wired into
+`docker-compose.yml` and the Makefile `run` target. The former names
+`BOT_DISPLAY_NAME` and `BOT_MODE` (`true`/`false`) are still honored as
+deprecated fallbacks.
 
 `SMP_SERVERS` / `XFTP_SERVERS` accept multiple space-separated addresses, e.g.
 `SMP_SERVERS="smp://abc=@relay1.example smp://def=@relay2.example"`; they're
 passed to simplex-chat as a single `--server` / `--xftp-server` argument.
 
-The `SIMPLEX_*` paths are advanced knobs — if you change them, keep `inbound`
-and `tmp` on the **same filesystem** (simplex-chat finishes a download with an
-atomic `tmp` → `inbound` rename that fails across mounts), and update the
-`/simplex` volume mountpoint to match.
+The `SIMPLEX_*` paths are advanced knobs and default under `$HOME/.simplex`
+(which is `/data/.simplex` in this image, next to the profile DB). If you change
+them, keep `inbound` and `tmp` on the **same filesystem** (simplex-chat finishes
+a download with an atomic `tmp` → `inbound` rename that fails across mounts).
 
-> **Plain mode note:** there's no CLI flag to create a non-bot profile
-> headlessly, so on first boot plain mode answers simplex-chat's interactive
+> **`human` mode note:** there's no CLI flag to create a non-bot profile
+> headlessly, so on first boot `human` mode answers simplex-chat's interactive
 > display-name prompt over stdin. This is verified to work on `simplex-chat
-> v6.5.4`; if a future version changes the first-run prompt, plain-mode profile
+> v6.5.5`; if a future version changes the first-run prompt, `human`-mode profile
 > creation may need revisiting.
 
 ## Build and run
@@ -187,23 +216,26 @@ docker build --build-arg IMAGE_REVISION=-1 -t simplex-chat .
 ### Run the container
 
 ```sh
+mkdir -p /tmp/simplex-outbound
 docker run -d --name simplex-chat \
   -p 5225:5225/tcp \
   -v /path/to/simplex-volume:/data \
-  -v /path/to/simplex-volume/.simplex/media:/simplex \
+  -v /tmp/simplex-outbound:/tmp/simplex-outbound \   # same path both sides — needed to SEND files
   --restart unless-stopped \
   simplex-chat
 ```
 
-`/data` holds the bot's profile and chat history (in `.simplex/`); `/simplex`
-is the file-exchange tree (see below), which lives at `.simplex/media` inside
-the same `/data` volume. Both mounts therefore point into one host directory
-and share one filesystem — required for simplex-chat's atomic `tmp` → `inbound`
-rename. The WebSocket control interface is then reachable at `ws://localhost:5225`.
+`/data` (the container HOME) holds the bot's profile and chat history in
+`.simplex/`, plus the inbound/tmp file dirs under `.simplex/` — one mount, one
+filesystem, so simplex-chat's atomic `tmp` → `files` rename works. The
+`/tmp/simplex-outbound` same-path mount is what lets you **send** files (see
+[File exchange](#file-exchange)); the container starts without it, but sends
+will fail until it's present. The WebSocket control interface is reachable at
+`ws://localhost:5225`.
 
 ### Using docker-compose
 
-Copy `.env.example` to `.env`, adjust `DATA_DIR` / `WS_PORT` / `BOT_DISPLAY_NAME`
+Copy `.env.example` to `.env`, adjust `DATA_DIR` / `WS_PORT` / `PROFILE_DISPLAY_NAME`
 if needed, then:
 
 ```sh

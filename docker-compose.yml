@@ -8,10 +8,10 @@
 #   docker compose logs -f            # follow logs
 #   docker compose down               # stop and remove
 #
-# DATA_DIR holds the bot's profile and the file-exchange dirs. /data and
-# /simplex (the volume's `simplex` subpath) are bind-mounted from the same
-# host directory so they share one filesystem — required for simplex-chat's
-# atomic tmp->inbound rename. See README "File exchange contract".
+# DATA_DIR holds the bot's profile and the file-exchange dirs, bind-mounted to
+# /data (the container HOME). The profile DB and the inbound/tmp/outbound dirs
+# all live under its `.simplex/` subtree on one filesystem — required for
+# simplex-chat's atomic tmp->inbound rename. See README "File exchange".
 
 services:
   simplex-chat:
@@ -26,20 +26,21 @@ services:
       - "${WS_PORT:-5225}:5225/tcp"
     environment:
       # Applied only on first boot, when the profile is created.
-      BOT_DISPLAY_NAME: "${BOT_DISPLAY_NAME:-SimpleX Bot}"
-      # true = SimpleX bot profile; false = plain SimpleX user (first boot only).
-      BOT_MODE: "${BOT_MODE:-true}"
+      PROFILE_DISPLAY_NAME: "${PROFILE_DISPLAY_NAME:-SimpleX Bot}"
+      # bot = SimpleX bot profile; human = plain SimpleX user (first boot only).
+      PROFILE_PEER_TYPE: "${PROFILE_PEER_TYPE:-bot}"
       # Custom relays (space-separated). Empty = simplex-chat's public presets.
       SMP_SERVERS: "${SMP_SERVERS:-}"
       XFTP_SERVERS: "${XFTP_SERVERS:-}"
     volumes:
+      # Profile DB + received-files (.simplex/files) + tmp all live under
+      # /data/.simplex on one filesystem.
       - "${DATA_DIR:-./data}:/data"
-      # File-exchange tree lives under the bot's profile dir (.simplex/media),
-      # mounted at the contract path /simplex. Same host fs as /data.
-      - "${DATA_DIR:-./data}/.simplex/media:/simplex"
-    # SIMPLEX_DIR is intentionally not exposed here: the /simplex mount above
-    # hardcodes the contract mountpoint, so overriding the path is an advanced
-    # manual knob (see README), not a compose toggle.
+      # Shared dir for SENDING files, bind-mounted verbatim (same path both
+      # sides) so a sender can write a file and pass its container path. Not
+      # needed to receive; the container starts fine without it. See README
+      # "File exchange".
+      - "${OUTBOUND_DIR:-/tmp/simplex-outbound}:${OUTBOUND_DIR:-/tmp/simplex-outbound}"
     healthcheck:
       # bash builtin /dev/tcp — no extra tooling needed in the image.
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/5225"]
