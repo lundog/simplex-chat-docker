@@ -25,13 +25,16 @@ set -e
 
 SIMPLEX_PID=""
 WEBSOCAT_PID=""
+JANITOR_PID=""
 
 cleanup() {
-  # Best-effort: kill both children. The `|| true` keeps trap-on-EXIT quiet
-  # when the children are already gone (which is the common case here,
-  # since we get to cleanup() via `wait -n` returning).
+  # Best-effort: kill child processes. The `|| true` keeps trap-on-EXIT quiet
+  # when a child is already gone (the common case, since we reach cleanup() via
+  # `wait -n` returning). The janitor is a best-effort background sweeper — not
+  # supervised — so it is only killed here, never a reason to restart.
   [ -n "$SIMPLEX_PID" ] && kill "$SIMPLEX_PID" 2>/dev/null || true
   [ -n "$WEBSOCAT_PID" ] && kill "$WEBSOCAT_PID" 2>/dev/null || true
+  [ -n "$JANITOR_PID" ] && kill "$JANITOR_PID" 2>/dev/null || true
 }
 trap cleanup TERM INT EXIT
 
@@ -99,6 +102,16 @@ XFTP_SERVERS="${XFTP_SERVERS:-}"
 # preallocation. Bytes; override only if you ever see splitting warnings.
 WS_MAX_MESSAGE_BYTES="${WS_MAX_MESSAGE_BYTES:-16777216}"   # 16 MiB
 
+# Optional retention for received files. simplex-chat leaves every received file
+# in --files-folder forever; a consumer that copies them elsewhere (e.g. the
+# openclaw-simplex plugin into OpenClaw's media store) has no way to reclaim
+# them, and the consumer's inbound mount is typically read-only anyway. When set
+# to a positive number of hours, a background janitor deletes received files
+# older than that window. Unset (default) = never delete — the operator owns
+# retention. Only the received-files dir is swept; tmp (in-progress transfers)
+# is managed by simplex-chat and left alone.
+INBOUND_RETENTION_HOURS="${INBOUND_RETENTION_HOURS:-}"
+
 # A relay address can carry a server basic-auth password
 # (smp://<fingerprint>:<password>@host). Redact that password before logging so
 # it never lands in container logs, while keeping the scheme, fingerprint, host,
@@ -165,6 +178,26 @@ fi
 echo "simplex-chat is listening; starting websocat bridge 0.0.0.0:5225 -> ws://127.0.0.1:5226 (max message ${WS_MAX_MESSAGE_BYTES} bytes)"
 /usr/local/bin/websocat -t -B "$WS_MAX_MESSAGE_BYTES" ws-listen:0.0.0.0:5225 ws://127.0.0.1:5226 &
 WEBSOCAT_PID=$!
+
+# Optional received-files janitor. Detached and NOT part of the wait -n set
+# below, so its lifecycle never triggers a container restart — it's pure
+# best-effort housekeeping. -mmin is minutes; hours * 60. A time window (not
+# "delete after copy") means no coordination with any consumer: the consumer
+# copies within seconds, so even a 1-hour window can't race an un-copied file.
+if [ -n "$INBOUND_RETENTION_HOURS" ]; then
+  if [ "$INBOUND_RETENTION_HOURS" -gt 0 ] 2>/dev/null; then
+    echo "starting received-files janitor: deleting files under $SIMPLEX_INBOUND_DIR older than ${INBOUND_RETENTION_HOURS}h (hourly)"
+    (
+      while true; do
+        find "$SIMPLEX_INBOUND_DIR" -type f -mmin "+$((INBOUND_RETENTION_HOURS * 60))" -delete 2>/dev/null || true
+        sleep 3600
+      done
+    ) &
+    JANITOR_PID=$!
+  else
+    echo "INBOUND_RETENTION_HOURS must be a positive integer; got '$INBOUND_RETENTION_HOURS' — janitor not started" >&2
+  fi
+fi
 echo "simplex-chat container ready"
 
 # Block until either child exits, then propagate. Requires bash 4.3+.

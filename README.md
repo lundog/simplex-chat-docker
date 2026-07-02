@@ -165,6 +165,7 @@ The container is configured through environment variables (all optional):
 | `SIMPLEX_INBOUND_DIR` | `$HOME/.simplex/files` | Received-files dir (`--files-folder`). |
 | `SIMPLEX_TMP_DIR` | `$HOME/.simplex/tmp` | In-progress-transfers dir (`--temp-folder`). |
 | `WS_MAX_MESSAGE_BYTES` | `16777216` (16 MiB) | Max WebSocket message size for the `websocat` bridge (`-B`). Above `websocat`'s 64 KiB default so large SimpleX events/previews aren't split into partial frames (which corrupts the JSON the client parses). |
+| `INBOUND_RETENTION_HOURS` | *(unset — never delete)* | If set to a positive integer, a background janitor hourly deletes received files under `SIMPLEX_INBOUND_DIR` older than this many hours. `simplex-chat` keeps received files forever and a consumer's inbound mount is usually read-only, so this lets the runtime (which owns the dir) reclaim space. `tmp` is left alone. |
 
 (There is no outbound dir variable — sending a file is not a simplex-chat setting; see [File exchange](#file-exchange).)
 
