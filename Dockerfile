@@ -20,7 +20,7 @@ LABEL org.opencontainers.image.title="simplex-websocket-bridge" \
       org.opencontainers.image.description="SimpleX Chat terminal client in headless bot mode, exposed over WebSocket" \
       org.opencontainers.image.source="https://github.com/lundog/simplex-websocket-bridge-docker" \
       org.opencontainers.image.url="https://github.com/lundog/simplex-websocket-bridge-docker" \
-      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.licenses="MIT AND AGPL-3.0-only" \
       org.opencontainers.image.version="${SIMPLEX_VERSION}${IMAGE_REVISION}"
 
 ARG SIMPLEX_SHA256_X86_64=6b698cc8cd73a2fcbf3265bb111e39c5def08dee51c8dbde57b990d0ccf51b7c

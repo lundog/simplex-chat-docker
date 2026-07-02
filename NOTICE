@@ -1,0 +1,35 @@
+simplex-websocket-bridge — third-party components
+=================================================
+
+This repository's own files (Dockerfile, entrypoint.sh, Makefile, compose, docs)
+are licensed under the MIT License (see LICENSE).
+
+The Docker IMAGE built from this repository additionally bundles the following
+third-party programs, which are run as separate processes and are governed by
+their own licenses. The image as distributed is therefore an aggregate:
+
+    SPDX-License-Identifier: MIT AND AGPL-3.0-only
+
+-------------------------------------------------------------------------------
+simplex-chat (the SimpleX Chat terminal client)
+  License:  AGPL-3.0-only
+  Version:  v6.5.5 (unmodified upstream release binary)
+  Source:   https://github.com/simplex-chat/simplex-chat
+  Corresponding source for the bundled version:
+            https://github.com/simplex-chat/simplex-chat/releases/tag/v6.5.5
+
+  Note: simplex-chat is bundled unmodified. Because it is licensed under the
+  AGPL-3.0, the image is distributed under AGPL-3.0 terms with respect to that
+  component, including the network-use provision (AGPL section 13). The
+  corresponding source is the upstream repository at the tag above.
+
+-------------------------------------------------------------------------------
+websocat
+  License:  MIT
+  Version:  v1.14.1 (unmodified upstream release binary)
+  Source:   https://github.com/vi/websocat
+
+-------------------------------------------------------------------------------
+Base image: ubuntu:22.04
+  The base image and its system packages are distributed under their own
+  respective licenses by Canonical / upstream Debian/Ubuntu maintainers.

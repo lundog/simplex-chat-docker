@@ -1,4 +1,4 @@
-# SimpleX Chat for Docker
+# SimpleX Chat WebSocket Bridge for Docker
 
 A Docker container that runs the [SimpleX Chat](https://simplex.chat/) terminal client in headless bot mode, exposed over a WebSocket so other services (or your own scripts) can send and receive SimpleX messages programmatically.
 
@@ -17,21 +17,17 @@ The WebSocket has no built-in auth — anything that can reach the container can
 
 ```
 External WebSocket client
-        │
-        │
-        │
-        │
-        │
-        │
-        └───────────────▶ websocat (container :5225) ──▶ ws://127.0.0.1:5226
-                                                                │
-                                                        simplex-chat (-p 5226)
-                                                                │
-                                                                └─ /data (volume, HOME)
-                                                                   └─ .simplex/   (profile DB + keys)
-                                                                       ├─ files/    (inbound, --files-folder)
-                                                                       ├─ tmp/      (--temp-folder)
-                                                                       └─ outbound/ (consumer-written, to send)
+ │
+ │
+ └─▶ websocat (container :5225) ──▶ ws://127.0.0.1:5226
+               │
+       simplex-chat (-p 5226)
+               │
+               └─ /data (volume, HOME)
+                  └─ .simplex/   (profile DB + keys)
+                      ├─ files/    (inbound, --files-folder)
+                      ├─ tmp/      (--temp-folder)
+                      └─ outbound/ (consumer-written, to send)
 ```
 ## Connecting programmatically
 
@@ -285,4 +281,19 @@ make buildx TAG=latest
 
 ## License
 
-MIT — see `LICENSE`.
+This repository's own files (Dockerfile, `entrypoint.sh`, Makefile, compose,
+docs) are **MIT** — see `LICENSE`.
+
+The published Docker **image** bundles third-party programs that run as separate
+processes and keep their own licenses, so the image as distributed is an
+aggregate — `SPDX-License-Identifier: MIT AND AGPL-3.0-only`:
+
+- **simplex-chat** — AGPL-3.0-only, bundled unmodified from the upstream release
+  ([source](https://github.com/simplex-chat/simplex-chat), pinned tag in the
+  `Dockerfile`). Because it is AGPL, the image is distributed under AGPL-3.0
+  terms with respect to that component (including the network-use provision,
+  AGPL §13); the corresponding source is the upstream repository at that tag.
+- **websocat** — MIT ([source](https://github.com/vi/websocat)).
+
+See `NOTICE` for details. This affects only the *distributed image*; the source
+in this repository remains MIT.
