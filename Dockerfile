@@ -16,10 +16,10 @@ ARG SIMPLEX_VERSION=v6.5.5
 # --build-arg IMAGE_REVISION=-1  -> image version v6.5.4-1
 ARG IMAGE_REVISION=
 
-LABEL org.opencontainers.image.title="simplex-chat" \
+LABEL org.opencontainers.image.title="simplex-websocket-bridge" \
       org.opencontainers.image.description="SimpleX Chat terminal client in headless bot mode, exposed over WebSocket" \
-      org.opencontainers.image.source="https://github.com/lundog/simplex-chat-docker" \
-      org.opencontainers.image.url="https://github.com/lundog/simplex-chat-docker" \
+      org.opencontainers.image.source="https://github.com/lundog/simplex-websocket-bridge-docker" \
+      org.opencontainers.image.url="https://github.com/lundog/simplex-websocket-bridge-docker" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.version="${SIMPLEX_VERSION}${IMAGE_REVISION}"
 

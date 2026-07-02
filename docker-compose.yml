@@ -14,13 +14,13 @@
 # simplex-chat's atomic tmp->inbound rename. See README "File exchange".
 
 services:
-  simplex-chat:
-    image: ${IMAGE:-lundog/simplex-chat:latest}
+  simplex-websocket-bridge:
+    image: ${IMAGE:-lundog/simplex-websocket-bridge:latest}
     build:
       # Versions and their SHA-256 pins are a matched set, bumped together in
       # the Dockerfile — not overridable here.
       context: .
-    container_name: simplex-chat
+    container_name: simplex-websocket-bridge
     restart: unless-stopped
     ports:
       - "${WS_PORT:-5225}:5225/tcp"

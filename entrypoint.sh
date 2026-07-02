@@ -118,7 +118,7 @@ INBOUND_RETENTION_HOURS="${INBOUND_RETENTION_HOURS:-}"
 # and port visible for diagnostics. Addresses without a password are unchanged.
 mask_server_pw() { sed -E 's#(://[^:@/]+):[^@]*@#\1:***@#g'; }
 
-echo "simplex-chat container starting"
+echo "simplex-websocket-bridge container starting"
 echo "  inbound:  $SIMPLEX_INBOUND_DIR"
 echo "  tmp:      $SIMPLEX_TMP_DIR"
 echo "  note: to SEND a file, a consumer sharing this container's /data volume"
@@ -197,7 +197,7 @@ if [ -n "$INBOUND_RETENTION_HOURS" ]; then
     echo "INBOUND_RETENTION_HOURS must be a positive integer; got '$INBOUND_RETENTION_HOURS' — janitor not started" >&2
   fi
 fi
-echo "simplex-chat container ready"
+echo "simplex-websocket-bridge container ready"
 
 # Block until either child exits, then propagate. Requires bash 4.3+.
 # Capture the exit code via `||` so `set -e` doesn't short-circuit our

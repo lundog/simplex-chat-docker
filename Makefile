@@ -1,9 +1,9 @@
 # Convenience targets for building, running, and publishing the image.
 # Override any variable on the command line, e.g.:
 #   make build TAG=v6.5.4
-#   make buildx IMAGE=lundog/simplex-chat TAG=v6.5.4
+#   make buildx IMAGE=lundog/simplex-websocket-bridge TAG=v6.5.4
 
-IMAGE            ?= lundog/simplex-chat
+IMAGE            ?= lundog/simplex-websocket-bridge
 TAG              ?= latest
 PLATFORMS        ?= linux/amd64,linux/arm64
 DATA_DIR             ?= $(HOME)/simplex-volume
@@ -30,7 +30,7 @@ build: ## Build the image for the local architecture
 	docker build $(BUILD_ARGS) -t $(IMAGE):$(TAG) .
 
 run: ## Run the container detached (bind-mounts DATA_DIR)
-	docker run -d --name simplex-chat \
+	docker run -d --name simplex-websocket-bridge \
 	  -p $(WS_PORT):5225/tcp \
 	  -e PROFILE_DISPLAY_NAME="$(PROFILE_DISPLAY_NAME)" \
 	  -e PROFILE_PEER_TYPE="$(PROFILE_PEER_TYPE)" \
@@ -39,11 +39,11 @@ run: ## Run the container detached (bind-mounts DATA_DIR)
 	  $(IMAGE):$(TAG)
 
 stop: ## Stop and remove the running container
-	-docker stop simplex-chat
-	-docker rm simplex-chat
+	-docker stop simplex-websocket-bridge
+	-docker rm simplex-websocket-bridge
 
 logs: ## Follow container logs
-	docker logs -f simplex-chat
+	docker logs -f simplex-websocket-bridge
 
 clean: ## Remove the locally built image
 	-docker rmi $(IMAGE):$(TAG)

@@ -187,7 +187,7 @@ Prerequisites: Docker (with the `buildx` plugin for multi-arch builds).
 ### Build the image
 
 ```sh
-docker build -t simplex-chat .
+docker build -t simplex-websocket-bridge .
 ```
 
 To bump the pinned `simplex-chat` or `websocat` version, edit the `Dockerfile`:
@@ -201,18 +201,18 @@ a fix to `entrypoint.sh`), set the optional hotfix suffix instead — it only
 affects the image version label:
 
 ```sh
-docker build --build-arg IMAGE_REVISION=-1 -t simplex-chat .
+docker build --build-arg IMAGE_REVISION=-1 -t simplex-websocket-bridge .
 # image version label becomes <simplex-version>-1
 ```
 
 ### Run the container
 
 ```sh
-docker run -d --name simplex-chat \
+docker run -d --name simplex-websocket-bridge \
   -p 5225:5225/tcp \
   -v /path/to/simplex-volume:/data \
   --restart unless-stopped \
-  simplex-chat
+  simplex-websocket-bridge
 ```
 
 `/data` (the container HOME) holds the bot's profile and chat history in
@@ -247,10 +247,10 @@ make help           # list all targets
 ## Published image
 
 Prebuilt multi-arch (amd64 + arm64) images are published to Docker Hub as
-[`lundog/simplex-chat`](https://hub.docker.com/r/lundog/simplex-chat):
+[`lundog/simplex-websocket-bridge`](https://hub.docker.com/r/lundog/simplex-websocket-bridge):
 
 ```sh
-docker pull lundog/simplex-chat:latest
+docker pull lundog/simplex-websocket-bridge:latest
 ```
 
 ### Publishing a new image
@@ -280,7 +280,7 @@ make buildx TAG=latest
 
 ## Repository
 
-- Container: <https://github.com/lundog/simplex-chat-docker>
+- Container: <https://github.com/lundog/simplex-websocket-bridge-docker>
 - Upstream: <https://github.com/simplex-chat/simplex-chat>
 
 ## License

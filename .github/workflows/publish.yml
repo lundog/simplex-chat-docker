@@ -22,7 +22,7 @@ on:
         default: "latest"
 
 env:
-  IMAGE: lundog/simplex-chat
+  IMAGE: lundog/simplex-websocket-bridge
 
 jobs:
   publish:
@@ -49,10 +49,10 @@ jobs:
         with:
           images: ${{ env.IMAGE }}
           # Pin the image title to the binary name (otherwise it defaults to the
-          # GitHub repo name, simplex-chat-docker). Other OCI labels (source,
+          # GitHub repo name, simplex-websocket-bridge-docker). Other OCI labels (source,
           # version, revision, created) are auto-derived from the repo + tag.
           labels: |
-            org.opencontainers.image.title=simplex-chat
+            org.opencontainers.image.title=simplex-websocket-bridge
           # latest=auto tags `latest` only for non-prerelease semver tags, and
           # skips the major.minor tag for prereleases. So v6.5.4 -> 6.5.4, 6.5,
           # latest; a hotfix v6.5.4-1 -> just 6.5.4-1 (latest/6.5 stay put).
