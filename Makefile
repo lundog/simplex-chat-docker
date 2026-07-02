@@ -10,9 +10,6 @@ DATA_DIR             ?= $(HOME)/simplex-volume
 WS_PORT              ?= 5225
 PROFILE_DISPLAY_NAME ?= SimpleX Bot
 PROFILE_PEER_TYPE    ?= bot
-# Shared dir for SENDING files, bind-mounted verbatim (same path both sides) so
-# a sender can write a file and pass its container path. Not needed to receive.
-OUTBOUND_DIR         ?= /tmp/simplex-outbound
 
 # simplex-chat / websocat versions and their SHA-256 pins are a matched set,
 # bumped together in the Dockerfile — not overridable here.
@@ -32,14 +29,12 @@ help: ## Show this help
 build: ## Build the image for the local architecture
 	docker build $(BUILD_ARGS) -t $(IMAGE):$(TAG) .
 
-run: ## Run the container detached (bind-mounts DATA_DIR + outbound send dir)
-	mkdir -p $(OUTBOUND_DIR)
+run: ## Run the container detached (bind-mounts DATA_DIR)
 	docker run -d --name simplex-chat \
 	  -p $(WS_PORT):5225/tcp \
 	  -e PROFILE_DISPLAY_NAME="$(PROFILE_DISPLAY_NAME)" \
 	  -e PROFILE_PEER_TYPE="$(PROFILE_PEER_TYPE)" \
 	  -v $(DATA_DIR):/data \
-	  -v $(OUTBOUND_DIR):$(OUTBOUND_DIR) \
 	  --restart unless-stopped \
 	  $(IMAGE):$(TAG)
 

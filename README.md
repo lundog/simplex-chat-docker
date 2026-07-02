@@ -122,35 +122,26 @@ with the bot. The two directions work differently:
   `.simplex/files` dir. So the two sides only need to share that one host
   directory; the mountpoint can differ on each side (no matching path required).
 - **Sending files (outbound)** — there is **no outbound dir setting and no
-  `--outbound-folder` flag**; sending is not a simplex-chat option at all. To
-  send a file you issue a command whose path is resolved **inside this
-  container**, so the file must already be on disk at a path this container can
-  read, and you pass *that* path. The bot won't fetch bytes over the WebSocket.
+  `--outbound-folder` flag**; sending is not a simplex-chat option at all. On
+  send you pass a file path that the runtime resolves **inside this container**,
+  so the file must already be readable here. The simplest arrangement: a consumer
+  that shares this container's `/data` volume writes the file under
+  `.simplex/outbound` and passes the container path `/data/.simplex/outbound/…`.
+  The bot won't fetch bytes over the WebSocket.
 
-Because the sender's path and the container's path must be the **same string**,
-bind-mount a directory onto the identical path on both sides. Use any path you
-can create without hoops — e.g. `/tmp/simplex-outbound` (avoid root-only paths
-like `/simplex`, which need `sudo` on macOS):
+If the consumer mounts the shared directory at a *different* path than the
+container's, it writes to its own path and rewrites the prefix to the container
+path before sending — no matching/verbatim mount required. The openclaw-simplex
+plugin does this automatically: `connection.outboundFolder` is its view of the
+directory and `connection.outboundFolderOnClient` is the container's
+`/data/.simplex/outbound`; it also creates the directory if missing and removes
+staged files after the send.
 
-```sh
-mkdir -p /tmp/simplex-outbound
-docker run -d --name simplex-chat \
-  -p 5225:5225/tcp \
-  -v /path/to/simplex-volume:/data \
-  -v /tmp/simplex-outbound:/tmp/simplex-outbound \   # same path both sides — needed to SEND files
-  simplex-chat
-# sender writes /tmp/simplex-outbound/pic.jpg, then sends fileSource.filePath=/tmp/simplex-outbound/pic.jpg
-```
-
-The container starts fine without this mount — you just can't *send* files until
-it's present. (The openclaw-simplex plugin automates the sender side via
-`connection.outboundFolder`, which stages outgoing files into this dir and
-passes the verbatim path.)
-
-**Security:** a consumer shares only what it needs — the `.simplex/files`
-subpath for inbound and a dedicated outbound dir for sending — never `.simplex/`
+**Security:** a consumer should share only what it needs — the `.simplex/files`
+subpath for inbound and `.simplex/outbound` for sending — never `.simplex/`
 itself or the whole `/data` volume, which hold the profile database and keys. On
-StartOS the consumer (e.g. OpenClaw) mounts subpaths via `mountDependency`.
+StartOS the consumer (e.g. OpenClaw) mounts just those subpaths via
+`mountDependency`.
 
 ## Configuration
 
@@ -217,22 +208,19 @@ docker build --build-arg IMAGE_REVISION=-1 -t simplex-chat .
 ### Run the container
 
 ```sh
-mkdir -p /tmp/simplex-outbound
 docker run -d --name simplex-chat \
   -p 5225:5225/tcp \
   -v /path/to/simplex-volume:/data \
-  -v /tmp/simplex-outbound:/tmp/simplex-outbound \   # same path both sides — needed to SEND files
   --restart unless-stopped \
   simplex-chat
 ```
 
 `/data` (the container HOME) holds the bot's profile and chat history in
-`.simplex/`, plus the inbound/tmp file dirs under `.simplex/` — one mount, one
-filesystem, so simplex-chat's atomic `tmp` → `files` rename works. The
-`/tmp/simplex-outbound` same-path mount is what lets you **send** files (see
-[File exchange](#file-exchange)); the container starts without it, but sends
-will fail until it's present. The WebSocket control interface is reachable at
-`ws://localhost:5225`.
+`.simplex/`, plus the inbound/tmp/outbound file dirs under `.simplex/` — one
+mount, one filesystem, so simplex-chat's atomic `tmp` → `files` rename works.
+Sending files needs a consumer that shares this volume (or its `.simplex/outbound`
+subpath); see [File exchange](#file-exchange). The WebSocket control interface is
+reachable at `ws://localhost:5225`.
 
 ### Using docker-compose
 

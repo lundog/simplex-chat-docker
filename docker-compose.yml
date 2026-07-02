@@ -33,14 +33,11 @@ services:
       SMP_SERVERS: "${SMP_SERVERS:-}"
       XFTP_SERVERS: "${XFTP_SERVERS:-}"
     volumes:
-      # Profile DB + received-files (.simplex/files) + tmp all live under
-      # /data/.simplex on one filesystem.
+      # Single mount: profile DB + received-files (.simplex/files) + tmp +
+      # outbound (.simplex/outbound) all live under /data/.simplex. Sending files
+      # is a consumer concern — a consumer shares this volume (or its
+      # .simplex/outbound subpath); see README "File exchange".
       - "${DATA_DIR:-./data}:/data"
-      # Shared dir for SENDING files, bind-mounted verbatim (same path both
-      # sides) so a sender can write a file and pass its container path. Not
-      # needed to receive; the container starts fine without it. See README
-      # "File exchange".
-      - "${OUTBOUND_DIR:-/tmp/simplex-outbound}:${OUTBOUND_DIR:-/tmp/simplex-outbound}"
     healthcheck:
       # bash builtin /dev/tcp — no extra tooling needed in the image.
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/5225"]
