@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
 # simplex-chat: pinned binary + SHA-256 per architecture.
 # When bumping SIMPLEX_VERSION, refresh hashes from the upstream release page:
 # https://github.com/simplex-chat/simplex-chat/releases
-ARG SIMPLEX_VERSION=v6.5.4
+ARG SIMPLEX_VERSION=v6.5.5
 # Container hotfix suffix. Empty by default so the image version == the SimpleX
 # version. Set for a container-only re-release (SimpleX unchanged), e.g.
 # --build-arg IMAGE_REVISION=-1  -> image version v6.5.4-1
@@ -23,8 +23,8 @@ LABEL org.opencontainers.image.title="simplex-chat" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.version="${SIMPLEX_VERSION}${IMAGE_REVISION}"
 
-ARG SIMPLEX_SHA256_X86_64=8c33b69e3cd5691e7a7aec455fc82955347d631572f0ff2c68eb3e12f50ab655
-ARG SIMPLEX_SHA256_AARCH64=ea864a205d38cec7ca25ecea9f5e50469055b3a39d70611e3c71a84cb012e0f3
+ARG SIMPLEX_SHA256_X86_64=6b698cc8cd73a2fcbf3265bb111e39c5def08dee51c8dbde57b990d0ccf51b7c
+ARG SIMPLEX_SHA256_AARCH64=2596145be2ebcf404bf6df0b84c6ab40e0936ba22202d2be7d51340f90ecd29c
 ARG TARGETARCH
 RUN case "$TARGETARCH" in \
     amd64) SIMPLEX_ARCH="x86_64"; SIMPLEX_SHA256="${SIMPLEX_SHA256_X86_64}" ;; \
