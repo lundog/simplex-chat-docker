@@ -1,7 +1,7 @@
 # Convenience targets for building, running, and publishing the image.
 # Override any variable on the command line, e.g.:
-#   make build TAG=v6.5.4
-#   make buildx IMAGE=lundog/simplex-websocket-bridge TAG=v6.5.4
+#   make build TAG=v6.5.6
+#   make buildx IMAGE=lundog/simplex-websocket-bridge TAG=v6.5.6
 
 IMAGE            ?= lundog/simplex-websocket-bridge
 TAG              ?= latest

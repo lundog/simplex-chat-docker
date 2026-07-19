@@ -173,7 +173,7 @@ a download with an atomic `tmp` → `inbound` rename that fails across mounts).
 > **`human` mode note:** there's no CLI flag to create a non-bot profile
 > headlessly, so on first boot `human` mode answers simplex-chat's interactive
 > display-name prompt over stdin. This is verified to work on `simplex-chat
-> v6.5.5`; if a future version changes the first-run prompt, `human`-mode profile
+> v6.5.6`; if a future version changes the first-run prompt, `human`-mode profile
 > creation may need revisiting.
 
 ## Build and run
@@ -251,26 +251,26 @@ docker pull lundog/simplex-websocket-bridge:latest
 
 ### Publishing a new image
 
-CI publishes automatically: pushing a git tag like `v6.5.4` runs the
+CI publishes automatically: pushing a git tag like `v6.5.6` runs the
 [`Publish image`](.github/workflows/publish.yml) GitHub Actions workflow, which
-builds for both architectures and pushes `6.5.4`, `6.5`, and `latest`. It needs
+builds for both architectures and pushes `6.5.6`, `6.5`, and `latest`. It needs
 two repository secrets: `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` (a Docker Hub
 access token with read/write scope).
 
 ```sh
-git tag v6.5.4
-git push origin v6.5.4
+git tag v6.5.6
+git push origin v6.5.6
 ```
 
-A pre-release tag like `v6.5.4-1` (e.g. a container-only hotfix) publishes only
-the `6.5.4-1` image tag — `latest` and `6.5` stay pointed at the last real
+A pre-release tag like `v6.5.6-1` (e.g. a container-only hotfix) publishes only
+the `6.5.6-1` image tag — `latest` and `6.5` stay pointed at the last real
 release.
 
 To publish by hand instead:
 
 ```sh
 make login                       # docker login
-make buildx TAG=v6.5.4           # multi-arch build + push
+make buildx TAG=v6.5.6           # multi-arch build + push
 make buildx TAG=latest
 ```
 

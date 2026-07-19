@@ -3,7 +3,7 @@ name: Publish image
 # Builds a multi-arch (amd64 + arm64) image and pushes it to Docker Hub.
 #
 # Triggers:
-#   - pushing a git tag like v6.5.4  -> publishes 6.5.4, 6.5, and latest
+#   - pushing a git tag like v6.5.6  -> publishes 6.5.6, 6.5, and latest
 #   - manual run (workflow_dispatch) -> publishes the tag you enter
 #
 # Required repository secrets (Settings -> Secrets and variables -> Actions):
@@ -17,7 +17,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Image tag to publish (e.g. latest or v6.5.4)"
+        description: "Image tag to publish (e.g. latest or v6.5.6)"
         required: false
         default: "latest"
 
@@ -54,8 +54,8 @@ jobs:
           labels: |
             org.opencontainers.image.title=simplex-websocket-bridge
           # latest=auto tags `latest` only for non-prerelease semver tags, and
-          # skips the major.minor tag for prereleases. So v6.5.4 -> 6.5.4, 6.5,
-          # latest; a hotfix v6.5.4-1 -> just 6.5.4-1 (latest/6.5 stay put).
+          # skips the major.minor tag for prereleases. So v6.5.6 -> 6.5.6, 6.5,
+          # latest; a hotfix v6.5.6-1 -> just 6.5.6-1 (latest/6.5 stay put).
           flavor: |
             latest=auto
           tags: |

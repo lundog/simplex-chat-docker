@@ -10,10 +10,10 @@ RUN apt-get update && apt-get install -y \
 # simplex-chat: pinned binary + SHA-256 per architecture.
 # When bumping SIMPLEX_VERSION, refresh hashes from the upstream release page:
 # https://github.com/simplex-chat/simplex-chat/releases
-ARG SIMPLEX_VERSION=v6.5.5
+ARG SIMPLEX_VERSION=v6.5.6
 # Container hotfix suffix. Empty by default so the image version == the SimpleX
 # version. Set for a container-only re-release (SimpleX unchanged), e.g.
-# --build-arg IMAGE_REVISION=-1  -> image version v6.5.4-1
+# --build-arg IMAGE_REVISION=-1  -> image version v6.5.6-1
 ARG IMAGE_REVISION=
 
 LABEL org.opencontainers.image.title="simplex-websocket-bridge" \
@@ -23,8 +23,8 @@ LABEL org.opencontainers.image.title="simplex-websocket-bridge" \
       org.opencontainers.image.licenses="MIT AND AGPL-3.0-only" \
       org.opencontainers.image.version="${SIMPLEX_VERSION}${IMAGE_REVISION}"
 
-ARG SIMPLEX_SHA256_X86_64=6b698cc8cd73a2fcbf3265bb111e39c5def08dee51c8dbde57b990d0ccf51b7c
-ARG SIMPLEX_SHA256_AARCH64=2596145be2ebcf404bf6df0b84c6ab40e0936ba22202d2be7d51340f90ecd29c
+ARG SIMPLEX_SHA256_X86_64=eaa3106616a39acdca75b2312d56e41babb6ebca54204c943a992ec4b9461154
+ARG SIMPLEX_SHA256_AARCH64=e50f8b2e29636976d6b94fbea8d51e1be3fa77bf8627e848ffc5ecbec0b10a1a
 ARG TARGETARCH
 RUN case "$TARGETARCH" in \
     amd64) SIMPLEX_ARCH="x86_64"; SIMPLEX_SHA256="${SIMPLEX_SHA256_X86_64}" ;; \

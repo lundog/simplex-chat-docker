@@ -13,10 +13,10 @@ their own licenses. The image as distributed is therefore an aggregate:
 -------------------------------------------------------------------------------
 simplex-chat (the SimpleX Chat terminal client)
   License:  AGPL-3.0-only
-  Version:  v6.5.5 (unmodified upstream release binary)
+  Version:  v6.5.6 (unmodified upstream release binary)
   Source:   https://github.com/simplex-chat/simplex-chat
   Corresponding source for the bundled version:
-            https://github.com/simplex-chat/simplex-chat/releases/tag/v6.5.5
+            https://github.com/simplex-chat/simplex-chat/releases/tag/v6.5.6
 
   Note: simplex-chat is bundled unmodified. Because it is licensed under the
   AGPL-3.0, the image is distributed under AGPL-3.0 terms with respect to that
